@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>知域 · 企业知识 Agent</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+
+  <main id="login-view" class="login-shell">
+    <section class="login-copy">
+      <div class="brand-mark">知</div>
+      <p class="eyebrow">ENTERPRISE KNOWLEDGE AGENT</p>
+      <h1>让每个回答，<br>都有据可查。</h1>
+      <p class="lead">部门级权限隔离、可追溯引用与检索评测，为企业资料提供可靠的智能问答入口。</p>
+      <div class="feature-row">
+        <span>权限先于检索</span><span>证据不足拒答</span><span>全链路指标</span>
+      </div>
+    </section>
+    <section class="login-card">
+      <p class="eyebrow">安全登录</p>
+      <h2>进入知识工作台</h2>
+      <form id="login-form">
+        <label>账号<input id="username" name="username" autocomplete="username" required value="admin"></label>
+        <label>密码<input id="password" name="password" type="password" autocomplete="current-password" required value="Admin123!"></label>
+        <button class="primary" type="submit">登录工作台 <span>→</span></button>
+        <p id="login-error" class="error" role="alert"></p>
+      </form>
+      <div class="demo-accounts">
+        <p>演示账号</p>
+        <button type="button" data-user="admin" data-password="Admin123!">管理员</button>
+        <button type="button" data-user="engineer" data-password="Engineer123!">研发员工</button>
+        <button type="button" data-user="finance" data-password="Finance123!">财务员工</button>
+      </div>
+    </section>
+  </main>
+
+  <main id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark small">知</div><div><strong>知域</strong><span>Knowledge Agent</span></div></div>
+      <nav>
+        <button class="nav-item active" data-panel="chat-panel"><span>✦</span> 智能问答</button>
+        <button class="nav-item" data-panel="docs-panel"><span>▤</span> 知识文档</button>
+      </nav>
+      <div class="security-note"><span>◈</span><div><strong>权限检索已启用</strong><small>结果仅来自当前账号有权访问的资料</small></div></div>
+      <div class="profile">
+        <div id="avatar" class="avatar">A</div>
+        <div><strong id="profile-name">admin</strong><small id="profile-meta">管理员 · 全部部门</small></div>
+        <button id="logout" title="退出">↗</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div><p class="eyebrow">KNOWLEDGE WORKSPACE</p><h2 id="page-title">智能问答</h2></div>
+        <div id="health-pill" class="health-pill"><i></i><span>系统检查中</span></div>
+      </header>
+
+      <section id="chat-panel" class="panel chat-panel">
+        <div id="welcome" class="welcome">
+          <div class="spark">✦</div>
+          <h3>今天想了解什么？</h3>
+          <p>回答严格基于已授权的企业文档，并附带原文出处。</p>
+          <div class="suggestions">
+            <button>研发环境的代码发布流程是什么？</button>
+            <button>差旅报销需要提交哪些材料？</button>
+            <button>忘记企业账号密码应该怎么处理？</button>
+          </div>
+        </div>
+        <div id="messages" class="messages"></div>
+        <form id="chat-form" class="composer">
+          <textarea id="question" rows="1" maxlength="2000" placeholder="向企业知识库提问…" required></textarea>
+          <div class="composer-bottom"><span>回答会附带文档与页码引用</span><button class="send" type="submit" aria-label="发送">↑</button></div>
+        </form>
+      </section>
+
+      <section id="docs-panel" class="panel hidden">
+        <div class="section-heading"><div><h3>知识文档</h3><p>文档权限会在向量检索之前强制生效。</p></div><button id="refresh-docs" class="secondary">刷新</button></div>
+        <form id="upload-form" class="upload-card hidden">
+          <div><strong>上传并建立索引</strong><p>支持 PDF、DOCX、Markdown，单文件不超过 20 MB。</p></div>
+          <label>显示名称<input name="title" required maxlength="255" placeholder="例如：员工差旅制度"></label>
+          <label>可见部门<select name="department"><option value="all">全公司</option><option value="engineering">研发部</option><option value="finance">财务部</option></select></label>
+          <label class="file-label">选择文档<input name="file" type="file" accept=".pdf,.docx,.md,.markdown" required></label>
+          <button class="primary" type="submit">上传文档</button>
+          <p id="upload-status" class="muted"></p>
+        </form>
+        <div class="table-card">
+          <table><thead><tr><th>文档</th><th>权限范围</th><th>索引状态</th><th>片段</th><th></th></tr></thead><tbody id="document-list"></tbody></table>
+          <div id="empty-docs" class="empty hidden">当前没有可访问的知识文档。</div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
+

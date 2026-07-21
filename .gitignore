@@ -1,0 +1,13 @@
+.env
+.packages/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+.idea/
+.vscode/
+data/
+model-cache/
+tmp/
+Docker Desktop Installer.exe
