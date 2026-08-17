@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,32 @@ class TextChunk:
     page: int | None
     ordinal: int
     content: str
+
+
+def validate_upload_content(path: Path, suffix: str) -> None:
+    """Reject files whose bytes do not match their allowed extension."""
+    suffix = suffix.lower()
+    if suffix == ".pdf":
+        if not path.read_bytes()[:5] == b"%PDF-":
+            raise ValueError("file content is not a PDF")
+        return
+    if suffix == ".docx":
+        if not zipfile.is_zipfile(path):
+            raise ValueError("file content is not a DOCX")
+        with zipfile.ZipFile(path) as archive:
+            names = set(archive.namelist())
+        if not {"[Content_Types].xml", "word/document.xml"}.issubset(names):
+            raise ValueError("file content is not a DOCX")
+        return
+    if suffix in {".md", ".markdown"}:
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Markdown must be UTF-8 text") from exc
+        if "\x00" in text:
+            raise ValueError("Markdown must be plain text")
+        return
+    raise ValueError(f"unsupported file type: {suffix}")
 
 
 def parse_document(path: Path) -> list[SourcePart]:

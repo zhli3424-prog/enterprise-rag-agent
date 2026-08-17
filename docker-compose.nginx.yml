@@ -1,0 +1,78 @@
+name: rag-agent-edge
+
+x-api: &api
+  build: .
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-knowledge_agent}:${POSTGRES_PASSWORD:-change-this-database-password}@postgres:5432/${POSTGRES_DB:-knowledge_agent}
+  volumes:
+    - uploads:/data/uploads
+    - model_cache:/models
+  depends_on:
+    postgres:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knowledge_agent}
+      POSTGRES_USER: ${POSTGRES_USER:-knowledge_agent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-database-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-knowledge_agent} -d ${POSTGRES_DB:-knowledge_agent}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api1:
+    <<: *api
+
+  api2:
+    <<: *api
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-knowledge_agent}:${POSTGRES_PASSWORD:-change-this-database-password}@postgres:5432/${POSTGRES_DB:-knowledge_agent}
+    volumes:
+      - uploads:/data/uploads
+      - model_cache:/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      api1:
+        condition: service_healthy
+      api2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  uploads:
+  model_cache:

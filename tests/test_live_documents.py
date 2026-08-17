@@ -97,6 +97,15 @@ class LiveDocumentLifecycleTests(unittest.TestCase):
         status = self.client.get(f"/api/documents/{document_id}/status").json()["document"]["status"]
         self.assertIn(status, {"pending", "processing"})
 
+    def test_extension_spoof_is_rejected_before_indexing(self):
+        response = self.client.post(
+            "/api/documents",
+            data={"title": "伪装 PDF", "department": "all"},
+            files={"file": ("fake.pdf", b"MZ-not-a-pdf", "application/pdf")},
+        )
+        self.assertEqual(response.status_code, 415, response.text)
+        self.assertIn("not a PDF", response.json()["detail"])
+
 
 if __name__ == "__main__":
     unittest.main()

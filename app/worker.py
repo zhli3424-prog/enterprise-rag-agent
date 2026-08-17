@@ -90,8 +90,21 @@ def process_job(job_id: int) -> None:
             logger.exception("ingestion failed document_id=%s", job.document_id)
 
 
-def recover_stale_jobs() -> None:
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
+def reset_stale_job(job: IngestionJob, now: datetime, stale_seconds: int) -> bool:
+    cutoff = now - timedelta(seconds=stale_seconds)
+    if job.status != "processing" or (job.locked_at is not None and job.locked_at >= cutoff):
+        return False
+    job.status = "retry"
+    job.available_at = now
+    job.locked_at = None
+    job.document.status = "pending"
+    return True
+
+
+def recover_stale_jobs(now: datetime | None = None) -> int:
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=settings.job_stale_seconds)
+    recovered = 0
     with SessionLocal() as session:
         jobs = session.scalars(
             select(IngestionJob).where(
@@ -100,18 +113,23 @@ def recover_stale_jobs() -> None:
             )
         )
         for job in jobs:
-            job.status = "retry"
-            job.available_at = datetime.now(timezone.utc)
-            job.document.status = "pending"
+            recovered += int(reset_stale_job(job, now, settings.job_stale_seconds))
         session.commit()
+    if recovered:
+        logger.warning("recovered stale ingestion jobs count=%s", recovered)
+    return recovered
 
 
 def main() -> None:
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     init_database()
     recover_stale_jobs()
+    last_recovery = time.monotonic()
     logger.info("ingestion worker started")
     while True:
+        if time.monotonic() - last_recovery >= settings.job_recovery_interval_seconds:
+            recover_stale_jobs()
+            last_recovery = time.monotonic()
         job_id = claim_job()
         if job_id is None:
             time.sleep(2)

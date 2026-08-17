@@ -10,4 +10,6 @@ htmlcov/
 data/
 model-cache/
 tmp/
+.tools/
 Docker Desktop Installer.exe
+support-ops-agent/
