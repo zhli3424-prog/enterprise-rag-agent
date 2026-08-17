@@ -10,6 +10,7 @@ torch==2.9.0+cpu
 sentence-transformers>=5,<6
 pypdf>=5.7,<7
 python-docx>=1.2,<2
+reportlab>=4,<5
 socksio>=1.0,<2
 httpx>=0.28,<1
 pytest>=8.4,<10

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install lightweight test dependencies
+        run: >-
+          python -m pip install
+          fastapi sqlalchemy "psycopg[binary]" pgvector
+          pypdf python-docx reportlab httpx openai pytest
+      - name: Compile Python
+        run: python -m compileall -q app scripts tests
+      - name: Run core and enhancement tests
+        run: pytest -q tests/test_core.py tests/test_enhancements.py
+      - name: Validate evaluation JSON
+        run: python -m json.tool eval/questions.json >/dev/null && python -m json.tool eval/answer_key.json >/dev/null
+      - name: Prepare Compose environment
+        run: cp .env.example .env
+      - name: Validate Compose files
+        run: docker compose config --quiet && docker compose -f docker-compose.nginx.yml config --quiet
+      - name: Ensure local secrets are not tracked
+        run: |
+          if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+            echo ".env must not be tracked"
+            exit 1
+          fi

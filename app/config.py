@@ -27,6 +27,8 @@ class Settings:
     min_lexical_coverage: float = float(os.getenv("MIN_LEXICAL_COVERAGE", "0.18"))
     upload_dir: Path = Path(os.getenv("UPLOAD_DIR", "data/uploads"))
     max_upload_bytes: int = int(os.getenv("MAX_UPLOAD_BYTES", str(20 * 1024 * 1024)))
+    job_stale_seconds: int = int(os.getenv("JOB_STALE_SECONDS", "900"))
+    job_recovery_interval_seconds: int = int(os.getenv("JOB_RECOVERY_INTERVAL_SECONDS", "30"))
     log_level: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
 

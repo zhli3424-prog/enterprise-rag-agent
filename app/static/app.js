@@ -22,6 +22,7 @@ function showApp(user) {
   $("#upload-form").classList.toggle("hidden", user.role !== "admin");
   checkHealth();
   loadDocuments();
+  loadConversations();
 }
 
 async function bootstrap() {
@@ -147,6 +148,70 @@ function renderSources(container, sources) {
   });
 }
 
+function showChatPanel() {
+  document.querySelectorAll(".nav-item").forEach((item) => item.classList.toggle("active", item.dataset.panel === "chat-panel"));
+  document.querySelectorAll(".panel").forEach((panel) => panel.classList.add("hidden"));
+  $("#chat-panel").classList.remove("hidden");
+  $("#page-title").textContent = "智能问答";
+}
+
+function newConversation() {
+  if (state.busy) return;
+  state.conversationId = null;
+  $("#messages").replaceChildren();
+  $("#welcome").classList.remove("hidden");
+  document.querySelectorAll(".conversation-item").forEach((item) => item.classList.remove("active"));
+  showChatPanel();
+  $("#question").focus();
+}
+
+async function loadConversations() {
+  const container = $("#conversation-list");
+  container.replaceChildren();
+  try {
+    const conversations = (await (await api("/api/conversations")).json()).conversations;
+    $("#empty-conversations").classList.toggle("hidden", conversations.length > 0);
+    conversations.forEach((conversation) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `conversation-item${conversation.id === state.conversationId ? " active" : ""}`;
+      button.textContent = conversation.title;
+      button.title = conversation.title;
+      button.addEventListener("click", () => restoreConversation(conversation.id));
+      container.append(button);
+    });
+  } catch (error) {
+    $("#empty-conversations").textContent = error.message;
+    $("#empty-conversations").classList.remove("hidden");
+  }
+}
+
+async function restoreConversation(id) {
+  if (state.busy) return;
+  try {
+    const data = await (await api(`/api/conversations/${id}`)).json();
+    state.conversationId = data.conversation.id;
+    $("#messages").replaceChildren();
+    $("#welcome").classList.add("hidden");
+    data.messages.forEach((message) => {
+      if (message.role === "user") {
+        userMessage(message.content);
+      } else if (message.role === "assistant") {
+        const assistant = assistantMessage();
+        assistant.status.textContent = "";
+        assistant.answer.textContent = message.content;
+        renderSources(assistant.citations, message.citations || []);
+      }
+    });
+    showChatPanel();
+    loadConversations();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+$("#new-conversation").addEventListener("click", newConversation);
+
 async function parseEventStream(response, handlers) {
   const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = "";
   while (true) {
@@ -173,7 +238,11 @@ $("#chat-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ question, conversation_id: state.conversationId })
     });
     await parseEventStream(response, {
-      meta: (data) => { state.conversationId = data.conversation_id; },
+      meta: (data) => {
+        const created = state.conversationId === null;
+        state.conversationId = data.conversation_id;
+        if (created) loadConversations();
+      },
       status: (data) => { assistant.status.textContent = data.message; },
       sources: (data) => renderSources(assistant.citations, data),
       delta: (data) => { assistant.answer.textContent += data.text; assistant.status.textContent = ""; },

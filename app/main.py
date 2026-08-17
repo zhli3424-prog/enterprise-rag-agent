@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_session, init_database
 from app.embeddings import embedding_loaded
-from app.models import Chunk, Conversation, Document, IngestionJob, User
+from app.models import Chunk, Conversation, Document, IngestionJob, Message, User
+from app.parsing import validate_upload_content
 from app.rag import stream_rag_answer
 from app.retrieval import accessible_documents_query
 from app.security import create_session, read_session, verify_password
@@ -141,6 +142,10 @@ async def upload_document(
                 digest.update(block)
                 output.write(block)
         file_hash = digest.hexdigest()
+        try:
+            validate_upload_content(temporary, suffix)
+        except ValueError as exc:
+            raise HTTPException(status_code=415, detail=str(exc)) from exc
         existing = session.scalar(select(Document).where(Document.file_hash == file_hash))
         if existing:
             raise HTTPException(status_code=409, detail=f"duplicate document: {existing.title}")
@@ -273,6 +278,56 @@ def chat_stream(payload: ChatRequest, user: User = Depends(current_user), sessio
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+def conversation_public(conversation: Conversation) -> dict:
+    return {
+        "id": conversation.id,
+        "title": conversation.title,
+        "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
+    }
+
+
+@app.get("/api/conversations")
+def list_conversations(user: User = Depends(current_user), session: Session = Depends(get_session)) -> dict:
+    conversations = session.scalars(
+        select(Conversation)
+        .where(Conversation.user_id == user.id)
+        .order_by(Conversation.created_at.desc())
+        .limit(50)
+    )
+    return {"conversations": [conversation_public(item) for item in conversations]}
+
+
+@app.get("/api/conversations/{conversation_id}")
+def get_conversation(
+    conversation_id: int,
+    user: User = Depends(current_user),
+    session: Session = Depends(get_session),
+) -> dict:
+    conversation = session.scalar(
+        select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == user.id)
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="conversation not found")
+    messages = session.scalars(
+        select(Message)
+        .where(Message.conversation_id == conversation.id)
+        .order_by(Message.created_at, Message.id)
+    )
+    return {
+        "conversation": conversation_public(conversation),
+        "messages": [
+            {
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "citations": message.citations or [],
+                "created_at": message.created_at.isoformat() if message.created_at else None,
+            }
+            for message in messages
+        ],
+    }
 
 
 @app.get("/api/health")

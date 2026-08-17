@@ -4,7 +4,8 @@ import logging
 import time
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, select, text
+from sqlalchemy import create_engine, text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -49,17 +50,16 @@ def init_database(max_wait_seconds: int = 45) -> None:
 
 def seed_demo_users() -> None:
     with SessionLocal() as session:
-        if session.scalar(select(User.id).limit(1)) is not None:
-            return
-        for username, password, role, department in DEMO_USERS:
-            session.add(
-                User(
-                    username=username,
-                    password_hash=hash_password(password),
-                    role=role,
-                    department=department,
-                )
-            )
+        rows = [
+            {
+                "username": username,
+                "password_hash": hash_password(password),
+                "role": role,
+                "department": department,
+            }
+            for username, password, role, department in DEMO_USERS
+        ]
+        session.execute(insert(User).values(rows).on_conflict_do_nothing(index_elements=[User.username]))
         session.commit()
 
 
