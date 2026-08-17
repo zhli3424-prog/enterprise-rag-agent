@@ -82,7 +82,7 @@ PostgreSQL 同时承担业务存储、任务队列和向量检索；首版不额
 ```text
 app/            FastAPI、RAG、权限、解析、Worker 与网页
 deploy/         Nginx 配置
-docs/           部署、演示和面试说明
+docs/           部署与演示说明
 eval/           50 题评测集、标准答案与结果样例
 sample_docs/    无敏感信息的演示知识库
 scripts/        数据导入、检索评测、答案评测和指标汇总
@@ -276,7 +276,7 @@ docker compose exec api python -m scripts.report_metrics
 docker run --rm -v "R:\:/workspace" -w /workspace rag-agent-api pytest -q tests/test_core.py
 ```
 
-简历增强功能单测覆盖答案/引用规则和 Worker 恢复边界：
+增强功能单测覆盖答案/引用规则和 Worker 恢复边界：
 
 ```powershell
 docker run --rm -v "R:\:/workspace" -w /workspace rag-agent-api pytest -q tests/test_enhancements.py
@@ -334,8 +334,8 @@ docker run --rm -e RUN_LIVE_TESTS=1 -e APP_BASE_URL=http://host.docker.internal:
 - 本地 HTTP 环境保持 `COOKIE_SECURE=false`。公网部署必须通过 HTTPS，并设置 `COOKIE_SECURE=true`。
 - 文档内容不能修改系统提示词；前端始终使用 `textContent` 展示模型和文档内容。
 - 权限过滤与向量查询位于同一条 SQL 中。API 对无权限文档统一返回 404，降低 ID 枚举泄露。
-- 当前是单组织、固定部门的简历 MVP，不支持 OCR、多租户、Kubernetes、知识图谱和复杂 Reranker。
-- Nginx 双 API 轮询只在本地容器环境验证；没有伪装成 Linux 生产上线、HTTPS 或高并发压测经验。
+- 当前是单组织、固定部门的本地部署 MVP，不支持 OCR、多租户、Kubernetes、知识图谱和复杂 Reranker。
+- Nginx 双 API 轮询仅在本地容器环境验证，尚未完成 Linux 生产部署、HTTPS 配置或高并发压测。
 - Memory 是可恢复的持久化短期会话上下文：生成只读取最近消息，不包含长期用户画像、摘要记忆或向量记忆。
 - `create_all` 足以初始化空仓库；出现第二版数据库结构时再加入 Alembic 迁移。
 
@@ -347,7 +347,7 @@ docker run --rm -e RUN_LIVE_TESTS=1 -e APP_BASE_URL=http://host.docker.internal:
 - CI 执行 Python 编译、16 项核心/增强单测、两份 Compose 配置校验、评测 JSON 校验和 `.env` 未跟踪检查。
 - 真实 DeepSeek、pgvector 和文件生命周期测试保留为本地 Docker 验收，避免在公开 CI 中使用 API Key 或下载完整模型。
 
-演示录制可参考[两分钟演示脚本](docs/demo-script.md)，项目说明与面试问答见[项目面试指南](docs/AI_AGENT_PROJECT_INTERVIEW_GUIDE.md)。
+功能演示可参考[两分钟演示脚本](docs/demo-script.md)。
 
 ## 常见失败
 
