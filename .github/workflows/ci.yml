@@ -24,6 +24,8 @@ jobs:
         run: pytest -q tests/test_core.py tests/test_enhancements.py
       - name: Validate evaluation JSON
         run: python -m json.tool eval/questions.json >/dev/null && python -m json.tool eval/answer_key.json >/dev/null
+      - name: Prepare Compose environment
+        run: cp .env.example .env
       - name: Validate Compose files
         run: docker compose config --quiet && docker compose -f docker-compose.nginx.yml config --quiet
       - name: Ensure local secrets are not tracked
